@@ -28,28 +28,28 @@ def test_run_agent_no_results():
 
 def test_handle_query_happy_path():
     from app import handle_query
-    listing_text, outfit_suggestion, fit_card = handle_query(
+    header, listing, outfit, fit_card = handle_query(
         "vintage graphic tee under $30", "Example wardrobe"
     )
-    assert "Title:" in listing_text
-    assert len(outfit_suggestion) > 0
-    assert len(fit_card) > 0
+    assert "Single-Stitch" in listing["value"] or "Tee" in listing["value"]
+    assert "Styled Look" in outfit["value"]
+    assert "Fit Card" in fit_card["value"]
 
 def test_handle_query_empty_query():
     from app import handle_query
-    listing_text, outfit_suggestion, fit_card = handle_query("", "Example wardrobe")
-    assert "Please enter a query" in listing_text
-    assert outfit_suggestion == ""
-    assert fit_card == ""
+    header, listing, outfit, fit_card = handle_query("", "Example wardrobe")
+    assert "Empty Query" in listing["value"]
+    assert outfit.get("visible") is False
+    assert fit_card.get("visible") is False
 
 def test_handle_query_no_results():
     from app import handle_query
-    listing_text, outfit_suggestion, fit_card = handle_query(
+    header, listing, outfit, fit_card = handle_query(
         "designer ballgown size XXS under $5", "Example wardrobe"
     )
-    assert "Error:" in listing_text
-    assert outfit_suggestion == ""
-    assert fit_card == ""
+    assert "No matching items found" in listing["value"]
+    assert outfit.get("visible") is False
+    assert fit_card.get("visible") is False
 
 def test_agent_retry_size_fallback():
     # Attempting to search for Demonia in size XXL (doesn't exist; listing lst_009 is size US 7)
