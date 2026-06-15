@@ -937,7 +937,7 @@ def build_interface():
     }
     """
 
-    with gr.Blocks(title="FitFindr", css=css) as demo:
+    with gr.Blocks(title="FitFindr") as demo:
         # Header Nav HTML
         gr.HTML("""
         <div class="header-row">
@@ -1044,9 +1044,9 @@ def build_interface():
             outputs=[results_header_output, listing_output, outfit_output, fitcard_output],
         )
 
-    return demo
+    return demo, css
 
 
 if __name__ == "__main__":
-    demo = build_interface()
-    demo.launch()
+    demo, css = build_interface()
+    demo.launch(css=css)
