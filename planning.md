@@ -137,6 +137,8 @@ graph TD
 
 ## A Complete Interaction (Step by Step)
 
+FitFindr is a multi-tool AI assistant that accepts natural language queries from users looking for secondhand clothes. It triggers `search_listings` to find relevant items; if that search fails to return results, it terminates early with a helpful message, otherwise it proceeds to trigger `suggest_outfit` using the top result and the user's wardrobe (offering general styling tips if the wardrobe is empty). Finally, it triggers `create_fit_card` to generate a shareable social media caption for the outfit.
+
 **Example user query:** "I'm looking for a vintage graphic tee under $30. I mostly wear baggy jeans and chunky sneakers. What's out there and how would I style it?"
 
 **Step 1:**
