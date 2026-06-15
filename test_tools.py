@@ -1,5 +1,5 @@
 import pytest
-from tools import search_listings
+from tools import search_listings, suggest_outfit, create_fit_card
 
 def test_search_listings_basic():
     # Test keyword matching
@@ -26,3 +26,67 @@ def test_search_listings_no_results():
     # A query designed to return nothing
     results = search_listings("designer ballgown", size="XXS", max_price=5.0)
     assert results == []
+
+def test_suggest_outfit_empty():
+    from utils.data_loader import get_empty_wardrobe
+    new_item = {
+        "title": "Vintage Levi's 501 Jeans — Medium Wash",
+        "description": "Classic 501s in a perfect medium wash. Some light fading at the knees.",
+        "category": "bottoms",
+        "style_tags": ["vintage", "classic", "denim"],
+        "size": "W30 L30",
+        "condition": "good",
+        "price": 38.00,
+        "colors": ["blue"],
+        "brand": "Levi's",
+        "platform": "depop"
+    }
+    empty_wardrobe = get_empty_wardrobe()
+    suggestion = suggest_outfit(new_item, empty_wardrobe)
+    assert isinstance(suggestion, str)
+    assert len(suggestion) > 0
+
+def test_suggest_outfit_populated():
+    from utils.data_loader import get_example_wardrobe
+    new_item = {
+        "title": "Vintage Levi's 501 Jeans — Medium Wash",
+        "description": "Classic 501s in a perfect medium wash. Some light fading at the knees.",
+        "category": "bottoms",
+        "style_tags": ["vintage", "classic", "denim"],
+        "size": "W30 L30",
+        "condition": "good",
+        "price": 38.00,
+        "colors": ["blue"],
+        "brand": "Levi's",
+        "platform": "depop"
+    }
+    wardrobe = get_example_wardrobe()
+    suggestion = suggest_outfit(new_item, wardrobe)
+    assert isinstance(suggestion, str)
+    assert len(suggestion) > 0
+
+def test_create_fit_card_error():
+    new_item = {
+        "title": "Vintage Levi's 501 Jeans — Medium Wash",
+        "price": 38.00,
+        "platform": "depop"
+    }
+    # Test blank outfit guard
+    res = create_fit_card("", new_item)
+    assert "Error" in res
+
+def test_create_fit_card_success():
+    new_item = {
+        "title": "Vintage Levi's 501 Jeans — Medium Wash",
+        "price": 38.00,
+        "platform": "depop"
+    }
+    outfit = "Pair this with your dark wash baggy straight-leg jeans for a relaxed streetwear vibe."
+    caption = create_fit_card(outfit, new_item)
+    assert isinstance(caption, str)
+    assert len(caption) > 0
+    # The output should mention depop and the price or similar.
+    # Note that case might vary, but let's check for case-insensitive occurrences.
+    caption_lower = caption.lower()
+    assert "depop" in caption_lower or "38" in caption_lower
+

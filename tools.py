@@ -148,8 +148,66 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
 
     Before writing code, fill in the Tool 2 section of planning.md.
     """
-    # Replace this with your implementation
-    return ""
+    # 1. Check whether wardrobe['items'] is empty.
+    items = wardrobe.get("items", [])
+    client = _get_groq_client()
+    
+    item_details = (
+        f"Title: {new_item.get('title')}\n"
+        f"Description: {new_item.get('description')}\n"
+        f"Category: {new_item.get('category')}\n"
+        f"Price: ${new_item.get('price')}\n"
+        f"Size: {new_item.get('size')}\n"
+        f"Brand: {new_item.get('brand') or 'N/A'}\n"
+        f"Style Tags: {', '.join(new_item.get('style_tags', []))}\n"
+        f"Colors: {', '.join(new_item.get('colors', []))}"
+    )
+
+    if not items:
+        # 2. If empty: call the LLM with a prompt for general styling ideas
+        prompt = (
+            f"The user is considering buying the following thrifted item:\n"
+            f"{item_details}\n\n"
+            f"The user's wardrobe is currently empty. Please provide general styling advice, "
+            f"suggesting what kinds of items pair well, what color palettes/vibes it suits, and how to style it."
+        )
+    else:
+        # 3. If not empty: format the wardrobe items into a prompt
+        wardrobe_list = []
+        for idx, w_item in enumerate(items, 1):
+            w_tags = ", ".join(w_item.get("style_tags", []))
+            w_colors = ", ".join(w_item.get("colors", []))
+            notes = f" (Notes: {w_item.get('notes')})" if w_item.get("notes") else ""
+            wardrobe_list.append(
+                f"- {w_item.get('name')} [Category: {w_item.get('category')}, Colors: {w_colors}, Tags: {w_tags}]{notes}"
+            )
+        wardrobe_details = "\n".join(wardrobe_list)
+        
+        prompt = (
+            f"The user is considering buying the following thrifted item:\n"
+            f"{item_details}\n\n"
+            f"Here is the user's existing wardrobe:\n"
+            f"{wardrobe_details}\n\n"
+            f"Please suggest 1-2 complete outfit combinations pairing the new thrifted item with specific named "
+            f"pieces from their wardrobe. Be clear, creative, and style-conscious."
+        )
+
+    # 4. Return the LLM's response as a string
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are FitFindr, an expert personal fashion stylist and thrifting assistant. Provide clear, inspiring, and concise outfit suggestions."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        temperature=0.7,
+    )
+    return response.choices[0].message.content.strip()
 
 
 # ── Tool 3: create_fit_card ───────────────────────────────────────────────────
@@ -181,5 +239,44 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
 
     Before writing code, fill in the Tool 3 section of planning.md.
     """
-    # Replace this with your implementation
-    return ""
+    # 1. Guard against an empty or whitespace-only outfit string.
+    if not outfit or not outfit.strip():
+        return "Error: Cannot generate fit card due to missing outfit details."
+
+    client = _get_groq_client()
+
+    # Extract item details
+    title = new_item.get("title", "this piece")
+    price = f"${new_item.get('price', 0.0):.2f}"
+    platform = new_item.get("platform", "thrift platform")
+
+    prompt = (
+        f"Write a short, casual OOTD social media caption for a thrifted find.\n\n"
+        f"Thrifted find details:\n"
+        f"- Item: {title}\n"
+        f"- Price: {price}\n"
+        f"- Platform: {platform}\n\n"
+        f"Styled outfit description:\n"
+        f"{outfit}\n\n"
+        f"Create a caption matching these guidelines:\n"
+        f"- Length: 2 to 4 sentences.\n"
+        f"- Tone: Casual, authentic OOTD post (no corporate sales pitch).\n"
+        f"- References: Mention the item name, price, and platform naturally exactly once each."
+    )
+
+    # 3. Call the LLM and return the response.
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a fashion influencer sharing a styling tip. Write short, engaging social media captions (2-4 sentences max)."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        temperature=0.95,
+    )
+    return response.choices[0].message.content.strip()
