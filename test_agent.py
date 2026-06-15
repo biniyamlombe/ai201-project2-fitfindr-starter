@@ -25,3 +25,28 @@ def test_run_agent_no_results():
     assert session["selected_item"] is None
     assert session["outfit_suggestion"] is None
     assert session["fit_card"] is None
+
+def test_handle_query_happy_path():
+    from app import handle_query
+    listing_text, outfit_suggestion, fit_card = handle_query(
+        "vintage graphic tee under $30", "Example wardrobe"
+    )
+    assert "Title:" in listing_text
+    assert len(outfit_suggestion) > 0
+    assert len(fit_card) > 0
+
+def test_handle_query_empty_query():
+    from app import handle_query
+    listing_text, outfit_suggestion, fit_card = handle_query("", "Example wardrobe")
+    assert "Please enter a query" in listing_text
+    assert outfit_suggestion == ""
+    assert fit_card == ""
+
+def test_handle_query_no_results():
+    from app import handle_query
+    listing_text, outfit_suggestion, fit_card = handle_query(
+        "designer ballgown size XXS under $5", "Example wardrobe"
+    )
+    assert "Error:" in listing_text
+    assert outfit_suggestion == ""
+    assert fit_card == ""
