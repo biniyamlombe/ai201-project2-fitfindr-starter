@@ -69,6 +69,7 @@ Your implementation files go in this same directory. There's no required file st
 | **`search_listings`** | `description` (str), `size` (str \| None), `max_price` (float \| None) | `list[dict]` | Scans database listings, filters by size (case-insensitive substring) and price (inclusive), scores by keyword overlap, and returns sorted lists. |
 | **`suggest_outfit`** | `new_item` (dict), `wardrobe` (dict) | `str` (Markdown) | Employs an LLM to recommend 1–2 outfit combinations pairing the new item with pieces from the wardrobe, or provides general styling recommendations if the wardrobe is empty. |
 | **`create_fit_card`** | `outfit` (str), `new_item` (dict) | `str` | Generates a casual, authentic OOTD-style social media caption referencing the item title, price, and platform exactly once. |
+| **`compare_price`** | `item` (dict) | `str` | Compares the selected item's price against other listings in the same category, computing min/max/average price statistics, and uses the LLM to generate a style-conscious price assessment. |
 
 ---
 
@@ -76,10 +77,15 @@ Your implementation files go in this same directory. There's no required file st
 
 FitFindr uses a sequential planning loop built on top of state management across a single session:
 1. **Query Parsing**: A specialized `llama-3.3-70b-versatile` LLM parser processes raw natural language inputs to extract structured parameters (`description`, `size`, `max_price`) as JSON attributes.
-2. **Search Execution**: It executes `search_listings` using the parsed criteria.
-3. **Branching/Guard Check**: If no relevant items are retrieved, the agent halts early, records the reason in the session state, and reports it.
-4. **Outfit Suggestions**: It selects the top search match and triggers `suggest_outfit` alongside the user's wardrobe details.
-5. **Fit Card Generation**: Finally, it triggers `create_fit_card` using the styled outfit output and the selected item to generate a shareable social media OOTD caption.
+2. **Search Execution & Fallback Retry**:
+   * It executes `search_listings` using the parsed criteria.
+   * **Fallback 1 (Size)**: If no results are found and a `size` constraint was parsed, the agent automatically drops the size filter and retries.
+   * **Fallback 2 (Price)**: If the search is still empty and `max_price` was set, the agent raises the maximum price ceiling by 50% (and clears size constraints) before retrying.
+   * Any adjustments made are logged in `session["adjustments"]` and displayed as warning headers in the Gradio UI.
+3. **Branching/Guard Check**: If no relevant items are retrieved after all retry attempts, the agent halts early, records the reason in the session state, and reports it.
+4. **Price Comparison**: For the selected top match, it invokes `compare_price` to fetch statistical metrics (min, max, average) for the category, compiling an LLM-powered style-conscious value opinion saved to `session["price_assessment"]`.
+5. **Outfit Suggestions**: It selects the top search match and triggers `suggest_outfit` alongside the user's wardrobe details.
+6. **Fit Card Generation**: Finally, it triggers `create_fit_card` using the styled outfit output and the selected item to generate a shareable social media OOTD caption.
 
 ---
 
@@ -91,6 +97,8 @@ Session state is centralized in a single `session` dictionary that flows through
 * `search_results` (list): The list of matched listings returned by `search_listings`.
 * `selected_item` (dict): The top listing match from search, passed into both `suggest_outfit` and `create_fit_card`.
 * `wardrobe` (dict): The user's active wardrobe dictionary.
+* `price_assessment` (str | None): LLM-generated analysis of how the item's price compares to the category averages.
+* `adjustments` (list[str]): Log messages describing search constraints that were loosened due to zero matches.
 * `outfit_suggestion` (str): Styling recommendations from `suggest_outfit`, piped directly as the input for `create_fit_card`.
 * `fit_card` (str): The final social media caption output.
 * `error` (str | None): Tracks any early exit reasons (e.g. no search results) or tool failure details.
@@ -116,6 +124,18 @@ Each component handles its failure mode gracefully without throwing unhandled ex
   * *Example Test Output*:
     ```python
     "Error: Cannot generate fit card due to missing outfit details."
+    ```
+* **`compare_price`**: If the LLM pricing analysis fails or the Groq client raises an error, it catches the exception and returns a pre-formatted fallback pricing message with category stats (min, max, average).
+  * *Example Test Output*:
+    ```text
+    "This item is priced at $38.00. Comparable items in the category 'bottoms' range from $20.00 to $65.00 (average: $39.50)."
+    ```
+* **`run_agent` Retry Logic (Fallback)**: When an impossible query is run, the agent automatically retries search queries with loosened filters (removing size restriction, then increasing price limit by 50%). If still no match exists, it halts and reports the failure.
+  * *Example Test Output*:
+    ```python
+    # Running "Demonia under $40" (normal price $55) triggers price loosening to $60.00.
+    # UI outputs listing with fallback alert:
+    "⚠️ [Fallback Retry Active] Loosened price limit from $40.00 to $60.00"
     ```
 
 ---

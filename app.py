@@ -46,7 +46,17 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
     tags_str = ", ".join(item.get("style_tags", []))
     colors_str = ", ".join(item.get("colors", []))
 
+    adjustments_str = ""
+    if session.get("adjustments"):
+        adj_list = "; ".join(session["adjustments"])
+        adjustments_str = f"⚠️ [Fallback Retry Active] {adj_list}\n\n"
+
+    price_assessment_str = ""
+    if session.get("price_assessment"):
+        price_assessment_str = f"\n\n📊 Price Assessment:\n{session['price_assessment']}"
+
     listing_text = (
+        f"{adjustments_str}"
         f"🛍️ Title: {item.get('title')}\n"
         f"💰 Price: ${item.get('price', 0.0):.2f}\n"
         f"📌 Size: {item.get('size')}\n"
@@ -56,6 +66,7 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
         f"🎨 Colors: {colors_str}\n"
         f"🏷️ Style Tags: {tags_str}\n\n"
         f"📝 Description:\n{item.get('description')}"
+        f"{price_assessment_str}"
     )
 
     return listing_text, session.get("outfit_suggestion") or "", session.get("fit_card") or ""

@@ -280,3 +280,72 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
         temperature=0.95,
     )
     return response.choices[0].message.content.strip()
+
+
+# ── Stretch Tool: compare_price ───────────────────────────────────────────────
+
+def compare_price(item: dict) -> str:
+    """
+    Given an item, estimates whether the price is fair based on comparable
+    listings in the dataset of the same category, returning LLM price reasoning.
+    """
+    try:
+        listings = load_listings()
+        cat = item.get("category")
+        if not cat:
+            return "Unable to determine category for price comparison."
+
+        # Filter items in the same category
+        comp_listings = [lst for lst in listings if lst.get("category") == cat]
+        if not comp_listings:
+            comp_listings = [item]
+
+        prices = [lst.get("price", 0.0) for lst in comp_listings if lst.get("price") is not None]
+        if not prices:
+            return f"No pricing data available for category '{cat}'."
+
+        avg_price = sum(prices) / len(prices)
+        min_price = min(prices)
+        max_price = max(prices)
+        
+        item_price = item.get("price", 0.0)
+        item_title = item.get("title", "this item")
+        item_brand = item.get("brand") or "N/A"
+
+        # Build prompt for LLM price assessment
+        prompt = (
+            f"Compare the price of this thrifted item against statistics for the category '{cat}':\n"
+            f"- Target Item: {item_title} (Brand: {item_brand})\n"
+            f"- Target Price: ${item_price:.2f}\n\n"
+            f"Category Statistics for '{cat}':\n"
+            f"- Average Price: ${avg_price:.2f}\n"
+            f"- Minimum Price: ${min_price:.2f}\n"
+            f"- Maximum Price: ${max_price:.2f}\n\n"
+            f"Write a 2-3 sentence price assessment for a shopper. Explain if the price is a bargain, "
+            f"fair, or slightly expensive compared to the average, and include style-conscious brand value reasoning. "
+            f"Keep it brief and helpful."
+        )
+
+        client = _get_groq_client()
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are FitFindr, an expert thrift shopper and price analyst. Write a concise, style-aware price evaluation (2-3 sentences max)."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.7,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception:
+        # Fallback string on failure
+        return (
+            f"This item is priced at ${item.get('price', 0.0):.2f}. Comparable items in the category "
+            f"'{item.get('category')}' range from ${min(prices):.2f} to ${max(prices):.2f} "
+            f"(average: ${sum(prices)/len(prices):.2f})."
+        )

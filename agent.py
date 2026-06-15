@@ -19,7 +19,7 @@ Usage (once implemented):
 """
 
 import json
-from tools import search_listings, suggest_outfit, create_fit_card, _get_groq_client
+from tools import search_listings, suggest_outfit, create_fit_card, compare_price, _get_groq_client
 
 
 def _parse_query(query: str) -> dict:
@@ -88,6 +88,8 @@ def _new_session(query: str, wardrobe: dict) -> dict:
         "search_results": [],        # list of matching listing dicts
         "selected_item": None,       # top result, passed into suggest_outfit
         "wardrobe": wardrobe,        # user's wardrobe dict
+        "price_assessment": None,    # price comparison assessment
+        "adjustments": [],           # logs constraint loosening details
         "outfit_suggestion": None,   # string returned by suggest_outfit
         "fit_card": None,            # string returned by create_fit_card
         "error": None,               # set if the interaction ended early
@@ -130,7 +132,21 @@ def run_agent(query: str, wardrobe: dict) -> dict:
 
     # Step 3: Call search_listings() with the parsed parameters.
     results = search_listings(desc, size=size, max_price=max_price)
+    adjustments = []
+
+    # Retry with loosened constraints if no exact matches found
+    if not results:
+        if size is not None:
+            adjustments.append(f"Loosened size filter '{size}' to show alternatives")
+            results = search_listings(desc, size=None, max_price=max_price)
+        
+        if not results and max_price is not None:
+            new_max = max_price * 1.5
+            adjustments.append(f"Loosened price limit from ${max_price:.2f} to ${new_max:.2f}")
+            results = search_listings(desc, size=None, max_price=new_max)
+
     session["search_results"] = results
+    session["adjustments"] = adjustments
 
     # If no results: set session["error"] to a helpful message and return early.
     if not results:
@@ -140,6 +156,12 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     # Step 4: Select the item to use (e.g., the top result).
     selected = results[0]
     session["selected_item"] = selected
+
+    # Step 4.5: Calculate price assessment
+    try:
+        session["price_assessment"] = compare_price(selected)
+    except Exception as e:
+        session["price_assessment"] = f"Price comparison failed: {str(e)}"
 
     # Step 5: Call suggest_outfit() with the selected item and wardrobe.
     try:

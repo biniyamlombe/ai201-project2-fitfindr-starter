@@ -1,5 +1,5 @@
 import pytest
-from tools import search_listings, suggest_outfit, create_fit_card
+from tools import search_listings, suggest_outfit, create_fit_card, compare_price
 
 def test_search_listings_basic():
     # Test keyword matching
@@ -100,3 +100,14 @@ def test_search_empty_results():
 def test_search_price_filter():
     results = search_listings("jacket", size=None, max_price=10)
     assert all(item["price"] <= 10 for item in results)
+
+def test_compare_price_success():
+    item = {
+        "title": "Vintage Levi's 501 Jeans — Medium Wash",
+        "price": 38.00,
+        "category": "bottoms",
+        "brand": "Levi's"
+    }
+    evaluation = compare_price(item)
+    assert isinstance(evaluation, str)
+    assert len(evaluation) > 0
