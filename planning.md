@@ -108,16 +108,31 @@ All state is stored in a single `session` dictionary that is passed through the 
 
 ```mermaid
 graph TD
-    User([User Query + Wardrobe]) --> Init[Initialize Session State]
-    Init --> Parse[LLM: Parse Query into description, size, max_price]
-    Parse --> Search[Call search_listings]
-    Search --> MatchCheck{Are results empty?}
-    MatchCheck -- Yes --> SetError[Set session error: No matches found]
-    SetError --> End[Return Session Dict]
-    MatchCheck -- No --> SelectTop[Select Top Listing]
-    SelectTop --> Suggest[Call suggest_outfit]
-    Suggest --> FitCard[Call create_fit_card]
-    FitCard --> End
+    User([User: query + wardrobe]) -->|Trigger query| Loop[Planning Loop: agent.py]
+    Loop -->|1. Initialize| Session[(Session State)]
+    
+    Loop -->|2. Parse & Search| Tool1[Tool 1: search_listings]
+    Tool1 -->|Return results list| Loop
+    
+    Loop -->|Check empty| MatchCheck{Are results empty?}
+    MatchCheck -->|Yes: error path| SetError[Set session error]
+    SetError -->|3a. Write error| Session
+    SetError -->|Return early| ReturnSession([Return Session Dict])
+    
+    MatchCheck -->|No: select top| SelectTop[selected_item = results[0]]
+    SelectTop -->|3b. Write selected_item| Session
+    
+    SelectTop -->|4. Suggest Outfit| Tool2[Tool 2: suggest_outfit]
+    Session -->|Read wardrobe & selected_item| Tool2
+    Tool2 -->|Return outfit_suggestion| Loop
+    Loop -->|5. Write suggestion| Session
+    
+    Loop -->|6. Generate Fit Card| Tool3[Tool 3: create_fit_card]
+    Session -->|Read selected_item & outfit_suggestion| Tool3
+    Tool3 -->|Return fit_card caption| Loop
+    Loop -->|7. Write fit_card| Session
+    
+    Session -->|Final Return| ReturnSession
 ```
 
 ---
