@@ -42,6 +42,19 @@ def _resolve_color(color_name: str) -> str:
             return v
     return "#a84a15"
 
+def _markdown_to_html(text: str) -> str:
+    if not text:
+        return ""
+    # Convert bold **text** or __text__ to <strong>text</strong>
+    text = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', text)
+    text = re.sub(r'__(.*?)__', r'<strong>\1</strong>', text)
+    # Convert italic *text* or _text_ to <em>text</em>
+    text = re.sub(r'\*(.*?)\*', r'<em>\1</em>', text)
+    text = re.sub(r'_(.*?)_', r'<em>\1</em>', text)
+    # Convert newlines to <br>
+    text = text.replace('\n', '<br>')
+    return text
+
 def _truncate_name(name: str) -> str:
     words = name.split()
     if len(words) > 3:
@@ -163,7 +176,7 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[dict, dict, dic
         price_assessment_html = f"""
         <div class="price-analysis-box">
             <div class="price-analysis-title">📊 Price Analysis</div>
-            <div class="price-analysis-text">{session['price_assessment']}</div>
+            <div class="price-analysis-text">{_markdown_to_html(session['price_assessment'])}</div>
         </div>
         """
 
@@ -252,7 +265,7 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[dict, dict, dic
             {color_blocks_html}
         </div>
         <div class="outfit-text">
-            {outfit_suggestion}
+            {_markdown_to_html(outfit_suggestion)}
         </div>
     </div>
     """
@@ -336,7 +349,7 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[dict, dict, dic
             </div>
         </div>
         <div class="fit-caption">
-            {fit_card}
+            {_markdown_to_html(fit_card)}
         </div>
         <div class="card-footer-tag">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -365,13 +378,13 @@ def build_interface():
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
     body, html, :host {
-        background-color: #dedad2 !important;
+        background-color: #ffffff !important;
         margin: 0 !important;
         padding: 0 !important;
     }
 
     .gradio-container {
-        background-color: #dedad2 !important;
+        background-color: #ffffff !important;
         font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
         color: #2c2b29 !important;
         max-width: 1200px !important;
@@ -620,8 +633,8 @@ def build_interface():
         background-color: #ffffff;
         border-radius: 18px;
         padding: 24px;
-        box-shadow: 0 4px 30px rgba(0,0,0,0.03);
-        border: 1px solid rgba(0,0,0,0.03);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        border: 1px solid rgba(0,0,0,0.08);
         overflow: hidden;
         height: 100%;
         display: flex;
