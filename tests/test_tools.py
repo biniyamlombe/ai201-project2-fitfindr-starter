@@ -87,3 +87,16 @@ def test_create_fit_card_success():
     assert len(caption) > 0
     caption_lower = caption.lower()
     assert "depop" in caption_lower or "38" in caption_lower
+
+def test_search_returns_results():
+    results = search_listings("vintage graphic tee", size=None, max_price=50)
+    assert isinstance(results, list)
+    assert len(results) > 0
+
+def test_search_empty_results():
+    results = search_listings("designer ballgown", size="XXS", max_price=5)
+    assert results == []   # empty list, no exception
+
+def test_search_price_filter():
+    results = search_listings("jacket", size=None, max_price=10)
+    assert all(item["price"] <= 10 for item in results)
