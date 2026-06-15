@@ -69,8 +69,56 @@ def search_listings(
 
     Before writing code, fill in the Tool 1 section of planning.md.
     """
-    # Replace this with your implementation
-    return []
+    # Load all listings
+    listings = load_listings()
+    
+    # 2. Filter by max_price and size (if provided)
+    filtered_listings = []
+    for listing in listings:
+        # Check max_price
+        if max_price is not None:
+            if listing.get("price", 0.0) > max_price:
+                continue
+        
+        # Check size
+        if size is not None:
+            listing_size = listing.get("size")
+            if not listing_size or size.lower() not in listing_size.lower():
+                continue
+                
+        filtered_listings.append(listing)
+        
+    # 3. Score each remaining listing by keyword overlap with `description`
+    # Clean and split the query description into lowercase words
+    query_words = [w.strip(".,!?\"'()").lower() for w in description.split()]
+    query_words = [w for w in query_words if w]
+    
+    if not query_words:
+        # If no keywords, everything has score 0, return empty list
+        return []
+        
+    scored_listings = []
+    for listing in filtered_listings:
+        # Combine listing fields to check for keyword overlap
+        brand = listing.get("brand") or ""
+        tags = " ".join(listing.get("style_tags", []))
+        title = listing.get("title") or ""
+        desc = listing.get("description") or ""
+        cat = listing.get("category") or ""
+        
+        combined_text = f"{title} {desc} {cat} {tags} {brand}".lower()
+        
+        # Compute overlap score
+        score = sum(1 for word in set(query_words) if word in combined_text)
+        
+        if score > 0:
+            scored_listings.append((score, listing))
+            
+    # 4. Sort by score, highest first
+    scored_listings.sort(key=lambda x: x[0], reverse=True)
+    
+    # 5. Return the listing dicts
+    return [listing for score, listing in scored_listings]
 
 
 # ── Tool 2: suggest_outfit ────────────────────────────────────────────────────
