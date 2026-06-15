@@ -62,6 +62,16 @@ Your implementation files go in this same directory. There's no required file st
 
 ## Agent Documentation
 
+### Tool Inventory
+
+| Tool Name | Parameters | Return Type | Purpose |
+|---|---|---|---|
+| **`search_listings`** | `description` (str), `size` (str \| None), `max_price` (float \| None) | `list[dict]` | Scans database listings, filters by size (case-insensitive substring) and price (inclusive), scores by keyword overlap, and returns sorted lists. |
+| **`suggest_outfit`** | `new_item` (dict), `wardrobe` (dict) | `str` (Markdown) | Employs an LLM to recommend 1–2 outfit combinations pairing the new item with pieces from the wardrobe, or provides general styling recommendations if the wardrobe is empty. |
+| **`create_fit_card`** | `outfit` (str), `new_item` (dict) | `str` | Generates a casual, authentic OOTD-style social media caption referencing the item title, price, and platform exactly once. |
+
+---
+
 ### Planning Loop
 
 FitFindr uses a sequential planning loop built on top of state management across a single session:
@@ -71,10 +81,65 @@ FitFindr uses a sequential planning loop built on top of state management across
 4. **Outfit Suggestions**: It selects the top search match and triggers `suggest_outfit` alongside the user's wardrobe details.
 5. **Fit Card Generation**: Finally, it triggers `create_fit_card` using the styled outfit output and the selected item to generate a shareable social media OOTD caption.
 
-### Error Handling Strategy
+---
 
-Each tool features standalone fallback handlers:
-* **search_listings**: Returns an empty list `[]` on failure/no-match, allowing the planning loop to catch this condition, set a helpful error message (`"No matching items found for your search."`), and terminate execution early.
-* **suggest_outfit**: If the wardrobe is empty, it bypasses specific garment pairings and instructs the LLM to write general styling tips and aesthetic vibes for the new item. If LLM calls fail, it catches exceptions and writes an error message to the session state.
-* **create_fit_card**: Validates inputs. If the outfit input is blank, it returns a descriptive error string: `"Error: Cannot generate fit card due to missing outfit details."` instead of crashing.
+### State Management Approach
+
+Session state is centralized in a single `session` dictionary that flows throughout the lifecycle of the user interaction. This dictionary acts as the single source of truth:
+* `query` (str): The raw string input from the user.
+* `parsed` (dict): Extracted search parameters (`description`, `size`, `max_price`).
+* `search_results` (list): The list of matched listings returned by `search_listings`.
+* `selected_item` (dict): The top listing match from search, passed into both `suggest_outfit` and `create_fit_card`.
+* `wardrobe` (dict): The user's active wardrobe dictionary.
+* `outfit_suggestion` (str): Styling recommendations from `suggest_outfit`, piped directly as the input for `create_fit_card`.
+* `fit_card` (str): The final social media caption output.
+* `error` (str | None): Tracks any early exit reasons (e.g. no search results) or tool failure details.
+
+---
+
+### Error Handling & Testing Examples
+
+Each component handles its failure mode gracefully without throwing unhandled exceptions:
+
+* **`search_listings`**: If no listings match, it returns an empty list `[]`. The planning loop catches this early-exit condition, sets `session["error"] = "No matching items found for your search."`, and terminates early.
+  * *Example Test Output*:
+    ```python
+    # Running designer ballgown size XXS under $5
+    "Error: No matching items found for your search."
+    ```
+* **`suggest_outfit`**: If the wardrobe is empty, it calls the LLM with a fallback prompt to output a guide on general color palettes, aesthetics, and building blocks to style the new item.
+  * *Example Test Output*:
+    ```text
+    "The Y2K Baby Tee with a butterfly print is an adorable addition to any wardrobe. Since your wardrobe is currently empty, let's start building a foundation around this cute top..."
+    ```
+* **`create_fit_card`**: If the outfit string is empty, it returns a descriptive error message string: `"Error: Cannot generate fit card due to missing outfit details."` instead of crashing.
+  * *Example Test Output*:
+    ```python
+    "Error: Cannot generate fit card due to missing outfit details."
+    ```
+
+---
+
+### Spec Reflection
+
+Our final implementation maps closely to our initial designs in `planning.md`:
+* **Accuracies**: The keyword scoring logic, empty wardrobe fallback prompts, and state passing dictionary worked exactly as planned.
+* **Refinement (Query Parsing)**: During implementation, we replaced custom string splitting and regex rules with a structured JSON-mode LLM call. This was much more robust at handling complex user expressions (like `"under $30"` or `"size 8.5"`).
+
+---
+
+### AI Usage Section
+
+We leveraged AI development tools to assist with coding and design in the following specific instances:
+
+1. **Structured Query Parser (`agent.py`)**
+   * *Input*: Provided the LLM with query string inputs and requested a JSON schema with keys `description` (str), `size` (str/null), and `max_price` (float/null).
+   * *Production*: Generated a completion leveraging Groq's JSON-object mode.
+   * *Override*: Wrapped the parsing in a `try/except` fallback block to ensure that if the API call ever errors, it defaults to placing the raw user query inside the `description` field, preserving agent stability.
+
+2. **Mermaid Diagram (`planning.md`)**
+   * *Input*: Labeled flowchart nodes containing brackets, spaces, and colons.
+   * *Production*: Initial nodes were drawn as `Tool1[Tool 1: search_listings]`.
+   * *Override*: Hand-edited the diagram to place double quotes around labels, e.g. `Tool1["Tool 1: search_listings"]`, correcting a syntax rendering bug on GitHub.
+
 
