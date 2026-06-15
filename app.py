@@ -364,6 +364,12 @@ def build_interface():
     css = """
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
+    body, html, :host {
+        background-color: #dedad2 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
     .gradio-container {
         background-color: #dedad2 !important;
         font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
