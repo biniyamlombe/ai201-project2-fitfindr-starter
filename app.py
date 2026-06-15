@@ -517,6 +517,11 @@ def build_interface():
         background-color: #8f3d0f !important;
     }
 
+    .wardrobe-row {
+        margin-top: 16px !important;
+        align-items: center !important;
+    }
+
     /* Style Gradio Radio as segmented pills */
     #wardrobe-choice {
         display: flex !important;
@@ -973,7 +978,7 @@ def build_interface():
                 )
                 submit_btn = gr.Button("Find it", elem_id="find-btn", scale=1)
                 
-            with gr.Row(elem_classes="wardrobe-row", style="margin-top: 16px; align-items: center;"):
+            with gr.Row(elem_classes="wardrobe-row"):
                 gr.HTML("<span style='font-size: 14px; font-weight: 500; color: #706b61; margin-right: 12px;'>Wardrobe</span>")
                 wardrobe_choice = gr.Radio(
                     choices=["Example wardrobe", "Empty wardrobe (new user)"],
