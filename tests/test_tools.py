@@ -85,8 +85,5 @@ def test_create_fit_card_success():
     caption = create_fit_card(outfit, new_item)
     assert isinstance(caption, str)
     assert len(caption) > 0
-    # The output should mention depop and the price or similar.
-    # Note that case might vary, but let's check for case-insensitive occurrences.
     caption_lower = caption.lower()
     assert "depop" in caption_lower or "38" in caption_lower
-
